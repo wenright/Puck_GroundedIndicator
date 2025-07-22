@@ -15,72 +15,75 @@ public class StickPositionerPatch : IPuckMod
   }
 
   static readonly Harmony harmony = new Harmony("wenright.GroundedIndicator");
+  public static Shader originalShader;
   public static Shader transparentShader;
   public static Texture stickTexture;
-  public static Color stickColor;
+  public static bool localStickOnGround = false;
 
   [HarmonyPostfix]
   [HarmonyPatch("Awake")]
   public static void PostfixAwake(StickPositioner __instance)
   {
-    if (!__instance.IsLocalPlayer) return;
-    
-    stickTexture = null;
     transparentShader = Shader.Find("Universal Render Pipeline/Lit");
+    originalShader = Shader.Find("Shader Graphs/Stick Simple");
+
+    
   }
 
   [HarmonyPostfix]
-  [HarmonyPatch("OnGrounded")]
-  public static void PostfixOnGrounded(StickPositioner __instance)
+  [HarmonyPatch("FixedUpdate")]
+  public static void PostfixFixedUpdate(StickPositioner __instance, LayerMask ___raycastLayerMask)
   {
-    if (!__instance.IsLocalPlayer) return;
+    if (!__instance.IsOwner) return;
 
-    SetTransparency(__instance.Stick, 1.0f);
-  }
-
-// TODO: This gets called every frame. Maybe just do a raycast in an update?
-  [HarmonyPostfix]
-  [HarmonyPatch("OnUngrounded")]
-  public static void PostfixOnUngrounded(StickPositioner __instance)
-  {
-    if (!__instance.IsLocalPlayer) return;
-
-    SetTransparency(__instance.Stick, 0.55f);
+    LayerMask layerMask = ~LayerMask.NameToLayer("Ice");
+    float distance = 0.25f;
+    if (Physics.Raycast(__instance.Stick.BladeHandlePosition + __instance.transform.up * 0.5f, -__instance.Stick.transform.up, distance, layerMask))
+    {
+      if (!localStickOnGround)
+      {
+        localStickOnGround = true;
+        SetTransparency(__instance.Stick, 1f);
+      }
+    }
+    else
+    {
+      if (localStickOnGround)
+      {
+        localStickOnGround = false;
+        SetTransparency(__instance.Stick, 0.5f);
+      }
+    }
   }
 
   private static void SetTransparency(Stick stick, float alpha)
   {
+    Debug.Log($"Setting transparency to {alpha}");
     MeshRenderer MeshRenderer = Traverse.Create(stick.StickMesh).Field("stickMeshRenderer").GetValue() as MeshRenderer;
     Material material = MeshRenderer.material;
-    Color color = material.color;
-    color.a = alpha;
-    material.color = color;
 
-    if (stickTexture == null)
-    {
-      stickTexture = material.GetTexture("_Texture");
-    }
-
-    material.shader = transparentShader;
-    material.SetTexture("_BaseMap", stickTexture);
+    if (stickTexture == null) stickTexture = material.GetTexture("_Texture");
 
     if (alpha <= 0.95)
     {
+      material.shader = transparentShader;
+      material.SetTexture("_BaseMap", stickTexture);
       material.SetOverrideTag("RenderType", "Transparent");
       material.SetFloat("_Surface", (float)SurfaceType.Transparent);
       material.SetFloat("_Blend", (float)BlendMode.SrcAlpha);
-      material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-      material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+      material.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
+      material.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
       material.SetInt("_ZWrite", 0);
       material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-      material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+      material.renderQueue = (int)RenderQueue.Transparent;
     }
     else
     {
+      material.shader = originalShader;
       material.SetOverrideTag("RenderType", "");
       material.SetFloat("_Surface", (float)SurfaceType.Opaque);
-      material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
-      material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
+      material.SetInt("_SrcBlend", (int)BlendMode.One);
+      material.SetInt("_DstBlend", (int)BlendMode.Zero);
       material.SetInt("_ZWrite", 1);
       material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
       material.renderQueue = -1;
@@ -95,6 +98,13 @@ public class StickPositionerPatch : IPuckMod
     {
       material.DisableKeyword("_ALPHATEST_ON");
     }
+
+    // if (material.HasColor("_Color"))
+    // {
+    Color color = material.color;
+    color.a = alpha;
+    material.color = color;
+    // }
   }
 
   public bool OnEnable()
