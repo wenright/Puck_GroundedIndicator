@@ -20,6 +20,8 @@ public class StickPositionerPatch : IPuckMod
   public static Texture stickTexture;
   public static bool localStickOnGround = false;
 
+  public static LineRenderer lineRenderer;
+
   [HarmonyPostfix]
   [HarmonyPatch("Awake")]
   public static void PostfixAwake(StickPositioner __instance)
@@ -27,18 +29,33 @@ public class StickPositionerPatch : IPuckMod
     transparentShader = Shader.Find("Universal Render Pipeline/Lit");
     originalShader = Shader.Find("Shader Graphs/Stick Simple");
 
-    
+    GameObject gameObject = new GameObject("Line Renderer for GroundedDetector");
+    lineRenderer = gameObject.AddComponent<LineRenderer>();
+    lineRenderer.material = new Material(Shader.Find("Sprites/Default"));
+
+    lineRenderer.startColor = Color.red;
+    lineRenderer.endColor = Color.cyan;
+
+    lineRenderer.startWidth = 0.025f;
+    lineRenderer.endWidth = 0.025f;
+
+    lineRenderer.positionCount = 2;
+    lineRenderer.useWorldSpace = true;
   }
 
   [HarmonyPostfix]
   [HarmonyPatch("FixedUpdate")]
-  public static void PostfixFixedUpdate(StickPositioner __instance, LayerMask ___raycastLayerMask)
+  public static void PostfixFixedUpdate(StickPositioner __instance)
   {
     if (!__instance.IsOwner) return;
 
-    LayerMask layerMask = ~LayerMask.NameToLayer("Ice");
-    float distance = 0.25f;
-    if (Physics.Raycast(__instance.Stick.BladeHandlePosition + __instance.transform.up * 0.5f, -__instance.Stick.transform.up, distance, layerMask))
+    LayerMask layerMask = LayerMask.GetMask("Ice");
+    Vector3 start = __instance.Stick.BladeHandlePosition + __instance.transform.up * 0.25f;
+    Vector3 direction = -__instance.Stick.transform.up;
+    float distance = 0.42f;
+    lineRenderer.SetPosition(0, start);
+    lineRenderer.SetPosition(1, start + direction * distance);
+    if (Physics.Raycast(start, direction, distance, layerMask))
     {
       if (!localStickOnGround)
       {
