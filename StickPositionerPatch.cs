@@ -19,11 +19,13 @@ public class StickPositionerPatch : IPuckMod
   public static Shader transparentShader;
   public static Texture stickTexture;
   public static bool localStickOnGround = false;
+  public static Material materialReference;
 
   [HarmonyPostfix]
   [HarmonyPatch("Awake")]
-  public static void PostfixAwake(StickPositioner __instance)
+  public static void PostfixAwake()
   {
+    materialReference = null;
     transparentShader = Shader.Find("Universal Render Pipeline/Lit");
     originalShader = Shader.Find("Shader Graphs/Stick Simple");
   }
@@ -58,53 +60,42 @@ public class StickPositionerPatch : IPuckMod
 
   private static void SetTransparency(Stick stick, float alpha)
   {
-    Debug.Log($"Setting transparency to {alpha}");
-    MeshRenderer MeshRenderer = Traverse.Create(stick.StickMesh).Field("stickMeshRenderer").GetValue() as MeshRenderer;
-    Material material = MeshRenderer.material;
-
-    if (stickTexture == null) stickTexture = material.GetTexture("_Texture");
+    if (materialReference == null)
+    {
+      MeshRenderer MeshRenderer = Traverse.Create(stick.StickMesh).Field("stickMeshRenderer").GetValue() as MeshRenderer;
+      materialReference = MeshRenderer.material;
+    }
 
     if (alpha <= 0.95)
     {
-      material.shader = transparentShader;
-      material.SetTexture("_BaseMap", stickTexture);
-      material.SetOverrideTag("RenderType", "Transparent");
-      material.SetFloat("_Surface", (float)SurfaceType.Transparent);
-      material.SetFloat("_Blend", (float)BlendMode.SrcAlpha);
-      material.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
-      material.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
-      material.SetInt("_ZWrite", 0);
-      material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-      material.renderQueue = (int)RenderQueue.Transparent;
+      materialReference.shader = transparentShader;
+      materialReference.SetTexture("_BaseMap", stickTexture);
+      materialReference.SetOverrideTag("RenderType", "Transparent");
+      materialReference.SetFloat("_Surface", (float)SurfaceType.Transparent);
+      materialReference.SetFloat("_Blend", (float)BlendMode.SrcAlpha);
+      materialReference.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
+      materialReference.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
+      materialReference.SetInt("_ZWrite", 0);
+      materialReference.EnableKeyword("_ALPHATEST_ON");
+      materialReference.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+      materialReference.renderQueue = (int)RenderQueue.Transparent;
+
+      Color color = materialReference.color;
+      color.a = alpha;
+      materialReference.color = color;
     }
     else
     {
-      material.shader = originalShader;
-      material.SetOverrideTag("RenderType", "");
-      material.SetFloat("_Surface", (float)SurfaceType.Opaque);
-      material.SetInt("_SrcBlend", (int)BlendMode.One);
-      material.SetInt("_DstBlend", (int)BlendMode.Zero);
-      material.SetInt("_ZWrite", 1);
-      material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-      material.renderQueue = -1;
+      stickTexture = materialReference.GetTexture("_Texture");
+      materialReference.shader = originalShader;
+      materialReference.SetOverrideTag("RenderType", "");
+      materialReference.SetFloat("_Surface", (float)SurfaceType.Opaque);
+      materialReference.SetInt("_SrcBlend", (int)BlendMode.One);
+      materialReference.SetInt("_DstBlend", (int)BlendMode.Zero);
+      materialReference.SetInt("_ZWrite", 1);
+      materialReference.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+      materialReference.renderQueue = -1;
     }
-
-    bool alphaClip = material.GetFloat("_AlphaClip") == 1;
-    if (alphaClip)
-    {
-      material.EnableKeyword("_ALPHATEST_ON");
-    }
-    else
-    {
-      material.DisableKeyword("_ALPHATEST_ON");
-    }
-
-    // if (material.HasColor("_Color"))
-    // {
-    Color color = material.color;
-    color.a = alpha;
-    material.color = color;
-    // }
   }
 
   public bool OnEnable()
