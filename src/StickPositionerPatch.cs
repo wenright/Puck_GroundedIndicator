@@ -15,11 +15,13 @@ public class StickPositionerPatch : IPuckMod
   }
 
   static readonly Harmony harmony = new Harmony("wenright.GroundedIndicator");
-  public static Shader originalShader;
+  public static Shader originalSimpleShader;
+  public static Shader originalComplexShader;
   public static Shader transparentShader;
   public static Texture stickTexture;
   public static bool localStickOnGround = false;
   public static Material materialReference;
+  public static bool useComplexShader = false;
 
   [HarmonyPostfix]
   [HarmonyPatch("Awake")]
@@ -27,7 +29,8 @@ public class StickPositionerPatch : IPuckMod
   {
     materialReference = null;
     transparentShader = Shader.Find("Universal Render Pipeline/Lit");
-    originalShader = Shader.Find("Shader Graphs/Stick Simple");
+    originalSimpleShader = Shader.Find("Shader Graphs/Stick Simple");
+    originalComplexShader = Shader.Find("Shader Graphs/Stick Complex");
   }
 
   [HarmonyPostfix]
@@ -42,19 +45,17 @@ public class StickPositionerPatch : IPuckMod
     float distance = 0.42f;
     if (Physics.Raycast(start, direction, distance, layerMask))
     {
-      if (!localStickOnGround)
-      {
-        localStickOnGround = true;
-        SetTransparency(__instance.Stick, 1f);
-      }
+      if (localStickOnGround) return;
+
+      localStickOnGround = true;
+      SetTransparency(__instance.Stick, 1f);
     }
     else
     {
-      if (localStickOnGround)
-      {
-        localStickOnGround = false;
-        SetTransparency(__instance.Stick, 0.5f);
-      }
+      if (!localStickOnGround) return;
+
+      localStickOnGround = false;
+      SetTransparency(__instance.Stick, 0.5f);
     }
   }
 
@@ -64,6 +65,7 @@ public class StickPositionerPatch : IPuckMod
     {
       MeshRenderer MeshRenderer = Traverse.Create(stick.StickMesh).Field("stickMeshRenderer").GetValue() as MeshRenderer;
       materialReference = MeshRenderer.material;
+      useComplexShader = materialReference.shader.name.Contains("Complex");
     }
 
     if (alpha <= 0.95)
@@ -87,7 +89,7 @@ public class StickPositionerPatch : IPuckMod
     else
     {
       stickTexture = materialReference.GetTexture("_Texture");
-      materialReference.shader = originalShader;
+      materialReference.shader = useComplexShader ?  originalComplexShader : originalSimpleShader;
       materialReference.SetOverrideTag("RenderType", "");
       materialReference.SetFloat("_Surface", (float)SurfaceType.Opaque);
       materialReference.SetInt("_SrcBlend", (int)BlendMode.One);
