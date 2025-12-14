@@ -6,13 +6,16 @@ using UnityEngine.Rendering;
 namespace GroundedIndicator;
 
 [HarmonyPatch(typeof(StickPositioner))]
-public class StickPositionerPatch : IPuckMod
+public class StickPositionerPatch
 {
   public enum SurfaceType
   {
     Opaque,
     Transparent
   }
+  
+  private static float stickOpacity = 0.5f;
+  private static float stickGroundOffset = 0.42f;
 
   static readonly Harmony harmony = new Harmony("wenright.GroundedIndicator");
   public static Shader originalSimpleShader;
@@ -42,7 +45,7 @@ public class StickPositionerPatch : IPuckMod
     LayerMask layerMask = LayerMask.GetMask("Ice");
     Vector3 start = __instance.Stick.BladeHandlePosition + __instance.transform.up * 0.25f;
     Vector3 direction = -__instance.Stick.transform.up;
-    float distance = 0.42f;
+    float distance = stickGroundOffset;
     if (Physics.Raycast(start, direction, distance, layerMask))
     {
       if (localStickOnGround) return;
@@ -55,7 +58,7 @@ public class StickPositionerPatch : IPuckMod
       if (!localStickOnGround) return;
 
       localStickOnGround = false;
-      SetTransparency(__instance.Stick, 0.5f);
+      SetTransparency(__instance.Stick, stickOpacity);
     }
   }
 
@@ -100,35 +103,11 @@ public class StickPositionerPatch : IPuckMod
     }
   }
 
-  public bool OnEnable()
+  public static void ConfigureSettings()
   {
-    try
-    {
-      harmony.PatchAll();
-    }
-    catch (Exception e)
-    {
-      Debug.LogError($"Harmony patch failed: {e.Message}");
-
-      return false;
-    }
-
-    return true;
-  }
-
-  public bool OnDisable()
-  {
-    try
-    {
-      harmony.UnpatchSelf();
-    }
-    catch (Exception e)
-    {
-      Debug.LogError($"Harmony unpatch failed: {e.Message}");
-
-      return false;
-    }
-
-    return true;
+    stickOpacity = Plugin.modSettings.StickOpacity;
+    stickGroundOffset = Plugin.modSettings.StickGroundOffset;
+    
+    Debug.Log($"Loading settings. Opacity: {stickOpacity}, Offset: {stickGroundOffset}");
   }
 }
