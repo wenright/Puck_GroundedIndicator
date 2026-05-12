@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace GroundedIndicator;
 
-public class Plugin : IPuckMod
+public class Plugin : IPuckPlugin
 {
   public static string MOD_NAME = "GroundedIndicator";
   public static string MOD_VERSION = "0.3.0";

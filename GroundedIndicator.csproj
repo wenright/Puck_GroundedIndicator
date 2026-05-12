@@ -14,11 +14,7 @@
     </Reference>
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="System.Text.Json" Version="9.0.7" />
-  </ItemGroup>
-
-  <Target Name="PostBuildMoveDll" AfterTargets="Build">
+  <Target Name="PostBuildMoveDll" AfterTargets="Build" Condition="'$(SkipGameCopy)' != 'true'">
     <PropertyGroup>
       <TargetDir>C:\Program Files (x86)\Steam\steamapps\common\Puck\Plugins\GroundedIndicator</TargetDir>
     </PropertyGroup>

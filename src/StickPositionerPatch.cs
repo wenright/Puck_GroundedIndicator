@@ -17,7 +17,6 @@ public class StickPositionerPatch
   private static float stickOpacity = 0.5f;
   private static float stickGroundOffset = 0.42f;
 
-  static readonly Harmony harmony = new Harmony("wenright.GroundedIndicator");
   public static Shader originalSimpleShader;
   public static Shader originalComplexShader;
   public static Shader transparentShader;
@@ -108,6 +107,6 @@ public class StickPositionerPatch
     stickOpacity = Plugin.modSettings.StickOpacity;
     stickGroundOffset = Plugin.modSettings.StickGroundOffset;
     
-    Debug.Log($"Loading settings. Opacity: {stickOpacity}, Offset: {stickGroundOffset}");
+    Debug.Log($"[{Plugin.MOD_NAME}] Settings loaded. Opacity: {stickOpacity}, Offset: {stickGroundOffset}");
   }
 }
