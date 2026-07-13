@@ -7,7 +7,7 @@ namespace GroundedIndicator;
 public class Plugin : IPuckPlugin
 {
   public static string MOD_NAME = "GroundedIndicator";
-  public static string MOD_VERSION = "0.3.0";
+  public static string MOD_VERSION = "0.4.0";
   public static string MOD_GUID = "wenright.GroundedIndicator";
 
   static readonly Harmony harmony = new Harmony(MOD_GUID);
@@ -39,6 +39,7 @@ public class Plugin : IPuckPlugin
   {
     try
     {
+      StickPositionerPatch.RestoreAll();
       harmony.UnpatchSelf();
       return true;
     }
